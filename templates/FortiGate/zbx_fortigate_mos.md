@@ -2,8 +2,8 @@
 
 Template Zabbix 7.0 para monitoramento de qualidade de link e cálculo de MOS (Mean Opinion Score) em FortiGate via SNMP, com auto-discovery (LLD).
 
-**Versão:** 1.7.0
-**Autor:** 9LEVEL / Liberato
+
+**Autor:** 9LEVEL / Liberato<br>
 **Grupo:** Templates/Network devices
 
 ---
