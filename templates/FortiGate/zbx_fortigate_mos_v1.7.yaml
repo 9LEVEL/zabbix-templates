@@ -1,0 +1,494 @@
+zabbix_export:
+  version: '7.0'
+  templates:
+    - uuid: 1caff894cdde4f6189c6f5d90001bb95
+      template: 'FortiGate VoIP MOS Monitor'
+      name: 'FortiGate VoIP MOS Monitor by SNMP - LLD'
+      description: |
+        Template para monitoramento de qualidade de link e calculo de MOS
+        via SNMP em FortiGate com auto-discovery (LLD).
+        Descobre Link Monitors e SD-WAN Health-Checks com nome da interface.
+        Autor: 9LEVEL / Liberato - Versao: 1.7.0
+      groups:
+        - name: 'Templates/Network devices'
+      macros:
+        - macro: '{$SNMP_COMMUNITY}'
+          value: 'public'
+        - macro: '{$MOS_WARNING}'
+          value: '3.6'
+        - macro: '{$MOS_CRITICAL}'
+          value: '3.1'
+        - macro: '{$LATENCY_WARNING}'
+          value: '150'
+        - macro: '{$LATENCY_CRITICAL}'
+          value: '300'
+        - macro: '{$JITTER_WARNING}'
+          value: '30'
+        - macro: '{$JITTER_CRITICAL}'
+          value: '50'
+        - macro: '{$PACKETLOSS_WARNING}'
+          value: '1'
+        - macro: '{$PACKETLOSS_CRITICAL}'
+          value: '3'
+        - macro: '{$BANDWIDTH_MIN_MBPS}'
+          value: '10'
+      discovery_rules:
+        - uuid: 83b19b4921c4451da9d8aa8ace08da22
+          name: 'FortiGate: Link Monitor Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#LM_NAME},1.3.6.1.4.1.12356.101.4.8.2.1.2,{#LM_STATE},1.3.6.1.4.1.12356.101.4.8.2.1.3]'
+          key: fg.linkmonitor.discovery
+          delay: '1h'
+          lifetime: '7d'
+          item_prototypes:
+            - uuid: 5d8a5a76d49b413ebd1246f09865f2d9
+              name: 'FortiGate: LM [{#LM_NAME}] - Latencia (ms)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.8.2.1.4.{#SNMPINDEX}'
+              key: 'fg.lm.latency[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: ms
+              tags:
+                - tag: component
+                  value: voip
+            - uuid: ac40b9a99dbe46dba686a6a04104c32f
+              name: 'FortiGate: LM [{#LM_NAME}] - Jitter (ms)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.8.2.1.5.{#SNMPINDEX}'
+              key: 'fg.lm.jitter[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: ms
+              tags:
+                - tag: component
+                  value: voip
+            - uuid: d8d01a9b6a8e46a8a5b081d52061afb1
+              name: 'FortiGate: LM [{#LM_NAME}] - Packet Loss (%)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.8.2.1.8.{#SNMPINDEX}'
+              key: 'fg.lm.packetloss[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: '%'
+              tags:
+                - tag: component
+                  value: voip
+            - uuid: da448513bd3244fca6a33ab6415504bf
+              name: 'FortiGate: LM [{#LM_NAME}] - Bandwidth In (Mbps)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.8.2.1.10.{#SNMPINDEX}'
+              key: 'fg.lm.bwin[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: Mbps
+              tags:
+                - tag: component
+                  value: network
+            - uuid: 65e26d0c9ab946bd951e5e88478c86f6
+              name: 'FortiGate: LM [{#LM_NAME}] - Bandwidth Out (Mbps)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.8.2.1.11.{#SNMPINDEX}'
+              key: 'fg.lm.bwout[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: Mbps
+              tags:
+                - tag: component
+                  value: network
+            - uuid: 4d7ebfe9882c418d8ea2b215300a0ec6
+              name: 'FortiGate: LM [{#LM_NAME}] - Bandwidth Bidi (Mbps)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.8.2.1.12.{#SNMPINDEX}'
+              key: 'fg.lm.bwbi[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: Mbps
+              tags:
+                - tag: component
+                  value: network
+            - uuid: d4161b6a51b94d598839a969104f7e5f
+              name: 'FortiGate: LM [{#LM_NAME}] - R-Factor'
+              type: CALCULATED
+              key: 'fg.lm.rfactor[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              params: 'min(max(93.2 - (last(//fg.lm.latency[{#SNMPINDEX}]) / 40) - (last(//fg.lm.jitter[{#SNMPINDEX}]) / 10) - (last(//fg.lm.packetloss[{#SNMPINDEX}]) * 2.5), 0), 93.2)'
+              tags:
+                - tag: component
+                  value: quality
+            - uuid: 9976e1f7466d45ecb55839b2419a10db
+              name: 'FortiGate: LM [{#LM_NAME}] - MOS Score'
+              type: CALCULATED
+              key: 'fg.lm.mos[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              params: 'min(max(1 + (0.035 * last(//fg.lm.rfactor[{#SNMPINDEX}])) + (last(//fg.lm.rfactor[{#SNMPINDEX}]) * (last(//fg.lm.rfactor[{#SNMPINDEX}]) - 60) * (100 - last(//fg.lm.rfactor[{#SNMPINDEX}])) * 0.000007), 1), 4.5)'
+              tags:
+                - tag: component
+                  value: quality
+          trigger_prototypes:
+            - uuid: 6f7fc5261ed6425ba986757792ea92bf
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.mos[{#SNMPINDEX}])<{$MOS_CRITICAL}'
+              name: 'FortiGate: LM [{#LM_NAME}] MOS CRITICO ({ITEM.LASTVALUE})'
+              priority: HIGH
+              dependencies:
+                - name: 'FortiGate: LM [{#LM_NAME}] DEAD - 100% packet loss'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.packetloss[{#SNMPINDEX}])=100'
+              tags:
+                - tag: scope
+                  value: voip
+            - uuid: 664480874e8746b0a53203c94cca1e3c
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.mos[{#SNMPINDEX}])<{$MOS_WARNING}'
+              name: 'FortiGate: LM [{#LM_NAME}] MOS degradado ({ITEM.LASTVALUE})'
+              priority: WARNING
+              dependencies:
+                - name: 'FortiGate: LM [{#LM_NAME}] MOS CRITICO ({ITEM.LASTVALUE})'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.mos[{#SNMPINDEX}])<{$MOS_CRITICAL}'
+              tags:
+                - tag: scope
+                  value: voip
+            - uuid: f27b571f5efd4489adf2d11ef60a123e
+              expression: 'max(/FortiGate VoIP MOS Monitor/fg.lm.mos[{#SNMPINDEX}],15m)<{$MOS_WARNING}'
+              name: 'FortiGate: LM [{#LM_NAME}] MOS PERSISTENTE 15min ({ITEM.LASTVALUE})'
+              priority: HIGH
+              dependencies:
+                - name: 'FortiGate: LM [{#LM_NAME}] DEAD - 100% packet loss'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.packetloss[{#SNMPINDEX}])=100'
+              tags:
+                - tag: action
+                  value: open-ticket
+            - uuid: b092d9293da648cc8acb752de61742f5
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.packetloss[{#SNMPINDEX}])=100'
+              name: 'FortiGate: LM [{#LM_NAME}] DEAD - 100% packet loss'
+              priority: DISASTER
+              tags:
+                - tag: scope
+                  value: availability
+            - uuid: b9077d7dc1d04010b5632c724424c47b
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.latency[{#SNMPINDEX}])>{$LATENCY_CRITICAL}'
+              name: 'FortiGate: LM [{#LM_NAME}] Latencia CRITICA ({ITEM.LASTVALUE}ms)'
+              priority: HIGH
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: bb2cef866d8e4fd98df54ef8937179dd
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.latency[{#SNMPINDEX}])>{$LATENCY_WARNING}'
+              name: 'FortiGate: LM [{#LM_NAME}] Latencia elevada ({ITEM.LASTVALUE}ms)'
+              priority: WARNING
+              dependencies:
+                - name: 'FortiGate: LM [{#LM_NAME}] Latencia CRITICA ({ITEM.LASTVALUE}ms)'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.latency[{#SNMPINDEX}])>{$LATENCY_CRITICAL}'
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: 31115b66ef614261a83b2693fc107766
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.jitter[{#SNMPINDEX}])>{$JITTER_CRITICAL}'
+              name: 'FortiGate: LM [{#LM_NAME}] Jitter CRITICO ({ITEM.LASTVALUE}ms)'
+              priority: HIGH
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: 74f4be485dae4fd599c030aded27a773
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.jitter[{#SNMPINDEX}])>{$JITTER_WARNING}'
+              name: 'FortiGate: LM [{#LM_NAME}] Jitter elevado ({ITEM.LASTVALUE}ms)'
+              priority: WARNING
+              dependencies:
+                - name: 'FortiGate: LM [{#LM_NAME}] Jitter CRITICO ({ITEM.LASTVALUE}ms)'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.jitter[{#SNMPINDEX}])>{$JITTER_CRITICAL}'
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: 5437f54024124a85af64d13d2ed6a941
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.packetloss[{#SNMPINDEX}])>{$PACKETLOSS_CRITICAL}'
+              name: 'FortiGate: LM [{#LM_NAME}] Packet Loss CRITICO ({ITEM.LASTVALUE}%)'
+              priority: HIGH
+              tags:
+                - tag: scope
+                  value: availability
+            - uuid: 7da2157412214c50a51408cfa045464b
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.packetloss[{#SNMPINDEX}])>{$PACKETLOSS_WARNING}'
+              name: 'FortiGate: LM [{#LM_NAME}] Packet Loss elevado ({ITEM.LASTVALUE}%)'
+              priority: WARNING
+              dependencies:
+                - name: 'FortiGate: LM [{#LM_NAME}] Packet Loss CRITICO ({ITEM.LASTVALUE}%)'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.packetloss[{#SNMPINDEX}])>{$PACKETLOSS_CRITICAL}'
+              tags:
+                - tag: scope
+                  value: availability
+            - uuid: 5dea18f6fc1d43a28c0b24344ca80e59
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.lm.bwbi[{#SNMPINDEX}])<{$BANDWIDTH_MIN_MBPS} and last(/FortiGate VoIP MOS Monitor/fg.lm.bwbi[{#SNMPINDEX}])>0'
+              name: 'FortiGate: LM [{#LM_NAME}] Bandwidth baixa ({ITEM.LASTVALUE}Mbps)'
+              priority: WARNING
+              tags:
+                - tag: scope
+                  value: performance
+        - uuid: 5f8034a9627a43638db8a5413d47bc83
+          name: 'FortiGate: SD-WAN Health-Check Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#HC_NAME},1.3.6.1.4.1.12356.101.4.9.2.1.2,{#HC_STATE},1.3.6.1.4.1.12356.101.4.9.2.1.3,{#HC_IFNAME},1.3.6.1.4.1.12356.101.4.9.2.1.14]'
+          key: fg.sdwan.discovery
+          delay: '1h'
+          lifetime: '7d'
+          description: 'Descobre SD-WAN Health-Checks com nome da interface via fgVWLHealthCheckLinkTable'
+          item_prototypes:
+            - uuid: b7f1b39bee6f46c694f1fb7bd91a603f
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] - Latencia (ms)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.9.2.1.4.{#SNMPINDEX}'
+              key: 'fg.sdwan.latency[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: ms
+              tags:
+                - tag: component
+                  value: voip
+                - tag: health-check
+                  value: '{#HC_NAME}'
+                - tag: interface
+                  value: '{#HC_IFNAME}'
+            - uuid: 6077f71c718643f78a5e09bb33742317
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] - Jitter (ms)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.9.2.1.5.{#SNMPINDEX}'
+              key: 'fg.sdwan.jitter[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: ms
+              tags:
+                - tag: component
+                  value: voip
+                - tag: health-check
+                  value: '{#HC_NAME}'
+                - tag: interface
+                  value: '{#HC_IFNAME}'
+            - uuid: 332e53eacad8484e862fe3da05a1b395
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] - Packet Loss (%)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.9.2.1.8.{#SNMPINDEX}'
+              key: 'fg.sdwan.packetloss[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: '%'
+              tags:
+                - tag: component
+                  value: voip
+                - tag: health-check
+                  value: '{#HC_NAME}'
+                - tag: interface
+                  value: '{#HC_IFNAME}'
+            - uuid: f010d8577b0142efabdbdec60bec46d4
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] - Bandwidth In (Mbps)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.9.2.1.10.{#SNMPINDEX}'
+              key: 'fg.sdwan.bwin[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: Mbps
+              tags:
+                - tag: component
+                  value: network
+                - tag: health-check
+                  value: '{#HC_NAME}'
+                - tag: interface
+                  value: '{#HC_IFNAME}'
+            - uuid: a17230d3c3c14b12b6528f9020431d4b
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] - Bandwidth Out (Mbps)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.9.2.1.11.{#SNMPINDEX}'
+              key: 'fg.sdwan.bwout[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: Mbps
+              tags:
+                - tag: component
+                  value: network
+                - tag: health-check
+                  value: '{#HC_NAME}'
+                - tag: interface
+                  value: '{#HC_IFNAME}'
+            - uuid: cd9a6fee0fc34cbc8dd81316ad40aaee
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] - Bandwidth Bidi (Mbps)'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.4.1.12356.101.4.9.2.1.12.{#SNMPINDEX}'
+              key: 'fg.sdwan.bwbi[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              units: Mbps
+              tags:
+                - tag: component
+                  value: network
+                - tag: health-check
+                  value: '{#HC_NAME}'
+                - tag: interface
+                  value: '{#HC_IFNAME}'
+            - uuid: 7f17c2e08a22465a9f91db11d2381a2b
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] - R-Factor'
+              type: CALCULATED
+              key: 'fg.sdwan.rfactor[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              params: 'min(max(93.2 - (last(//fg.sdwan.latency[{#SNMPINDEX}]) / 40) - (last(//fg.sdwan.jitter[{#SNMPINDEX}]) / 10) - (last(//fg.sdwan.packetloss[{#SNMPINDEX}]) * 2.5), 0), 93.2)'
+              tags:
+                - tag: component
+                  value: quality
+                - tag: health-check
+                  value: '{#HC_NAME}'
+                - tag: interface
+                  value: '{#HC_IFNAME}'
+            - uuid: 6b4ca36689fd456ba1550875470c4196
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] - MOS Score'
+              type: CALCULATED
+              key: 'fg.sdwan.mos[{#SNMPINDEX}]'
+              delay: '60s'
+              history: 90d
+              trends: 365d
+              value_type: FLOAT
+              params: 'min(max(1 + (0.035 * last(//fg.sdwan.rfactor[{#SNMPINDEX}])) + (last(//fg.sdwan.rfactor[{#SNMPINDEX}]) * (last(//fg.sdwan.rfactor[{#SNMPINDEX}]) - 60) * (100 - last(//fg.sdwan.rfactor[{#SNMPINDEX}])) * 0.000007), 1), 4.5)'
+              tags:
+                - tag: component
+                  value: quality
+                - tag: health-check
+                  value: '{#HC_NAME}'
+                - tag: interface
+                  value: '{#HC_IFNAME}'
+          trigger_prototypes:
+            - uuid: 49b29532f7db482e9349aa0b2cd4f7ba
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.mos[{#SNMPINDEX}])<{$MOS_CRITICAL}'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] MOS CRITICO ({ITEM.LASTVALUE})'
+              priority: HIGH
+              dependencies:
+                - name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] DEAD - 100% packet loss'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.packetloss[{#SNMPINDEX}])=100'
+              tags:
+                - tag: scope
+                  value: voip
+            - uuid: a8d44558f2374162b9b630cbf8066498
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.mos[{#SNMPINDEX}])<{$MOS_WARNING}'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] MOS degradado ({ITEM.LASTVALUE})'
+              priority: WARNING
+              dependencies:
+                - name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] MOS CRITICO ({ITEM.LASTVALUE})'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.mos[{#SNMPINDEX}])<{$MOS_CRITICAL}'
+              tags:
+                - tag: scope
+                  value: voip
+            - uuid: 0da8751caa3f4ef583b999ebeb159300
+              expression: 'max(/FortiGate VoIP MOS Monitor/fg.sdwan.mos[{#SNMPINDEX}],15m)<{$MOS_WARNING}'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] MOS PERSISTENTE 15min ({ITEM.LASTVALUE})'
+              priority: HIGH
+              dependencies:
+                - name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] DEAD - 100% packet loss'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.packetloss[{#SNMPINDEX}])=100'
+              tags:
+                - tag: action
+                  value: open-ticket
+            - uuid: c8873d662d284983a45c54b6d90908fc
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.packetloss[{#SNMPINDEX}])=100'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] DEAD - 100% packet loss'
+              priority: DISASTER
+              tags:
+                - tag: scope
+                  value: availability
+            - uuid: 47d05a28c83f47a1ab38741251c92457
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.latency[{#SNMPINDEX}])>{$LATENCY_CRITICAL}'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Latencia CRITICA ({ITEM.LASTVALUE}ms)'
+              priority: HIGH
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: 0bda8a55144a434498d15eba9662ef00
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.latency[{#SNMPINDEX}])>{$LATENCY_WARNING}'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Latencia elevada ({ITEM.LASTVALUE}ms)'
+              priority: WARNING
+              dependencies:
+                - name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Latencia CRITICA ({ITEM.LASTVALUE}ms)'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.latency[{#SNMPINDEX}])>{$LATENCY_CRITICAL}'
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: e75aa07ee52d486ab2bed3dc7125a702
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.jitter[{#SNMPINDEX}])>{$JITTER_CRITICAL}'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Jitter CRITICO ({ITEM.LASTVALUE}ms)'
+              priority: HIGH
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: a2cc4485a9514982af3f5248601bf11d
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.jitter[{#SNMPINDEX}])>{$JITTER_WARNING}'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Jitter elevado ({ITEM.LASTVALUE}ms)'
+              priority: WARNING
+              dependencies:
+                - name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Jitter CRITICO ({ITEM.LASTVALUE}ms)'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.jitter[{#SNMPINDEX}])>{$JITTER_CRITICAL}'
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: bf1552afc6da424eb41ba0008c098462
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.packetloss[{#SNMPINDEX}])>{$PACKETLOSS_CRITICAL}'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Packet Loss CRITICO ({ITEM.LASTVALUE}%)'
+              priority: HIGH
+              tags:
+                - tag: scope
+                  value: availability
+            - uuid: dd129852ca1a47b8b02b1fba82cb90ff
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.packetloss[{#SNMPINDEX}])>{$PACKETLOSS_WARNING}'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Packet Loss elevado ({ITEM.LASTVALUE}%)'
+              priority: WARNING
+              dependencies:
+                - name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Packet Loss CRITICO ({ITEM.LASTVALUE}%)'
+                  expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.packetloss[{#SNMPINDEX}])>{$PACKETLOSS_CRITICAL}'
+              tags:
+                - tag: scope
+                  value: availability
+            - uuid: 8830775b33ff4d10ad2ee32fa19dacb2
+              expression: 'last(/FortiGate VoIP MOS Monitor/fg.sdwan.bwbi[{#SNMPINDEX}])<{$BANDWIDTH_MIN_MBPS} and last(/FortiGate VoIP MOS Monitor/fg.sdwan.bwbi[{#SNMPINDEX}])>0'
+              name: 'FortiGate: SDWAN [{#HC_NAME} - {#HC_IFNAME}] Bandwidth baixa ({ITEM.LASTVALUE}Mbps)'
+              priority: WARNING
+              tags:
+                - tag: scope
+                  value: performance
+      valuemaps:
+        - uuid: eca3ca3426f2438e963788c489aa2445
+          name: 'FortiGate Link Quality'
+          mappings:
+            - value: '5'
+              newvalue: Excelente
+            - value: '4'
+              newvalue: Bom
+            - value: '3'
+              newvalue: Aceitavel
+            - value: '2'
+              newvalue: Ruim
+            - value: '1'
+              newvalue: Inaceitavel
